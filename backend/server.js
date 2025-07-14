@@ -6,11 +6,25 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-const upload = multer();
+
+// Limit upload size to 50MB
+const upload = multer({
+  limits: { fileSize: 50 * 1024 * 1024 } // 50 MB
+});
 
 app.use(cors());
 
-app.post('/send', upload.single('media'), async (req, res) => {
+app.post('/send', (req, res, next) => {
+  upload.single('media')(req, res, err => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'File size too large. Max 50MB allowed.' });
+      }
+      return res.status(400).json({ error: err.message });
+    }
+    next();
+  });
+}, async (req, res) => {
   const { caption } = req.body;
   const media = req.file;
 
