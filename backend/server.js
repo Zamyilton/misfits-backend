@@ -14,13 +14,13 @@ app.post('/send', upload.single('media'), async (req, res) => {
   const { caption } = req.body;
   const media = req.file;
 
-  if (!media || !caption) {
-    return res.status(400).json({ error: 'Missing media or message.' });
+  if (!media) {
+    return res.status(400).json({ error: 'Missing media file.' });
   }
 
   const formData = new FormData();
   formData.append('chat_id', process.env.CHAT_ID);
-  formData.append('caption', caption);
+  if (caption) formData.append('caption', caption);
 
   let telegramEndpoint = '';
 
