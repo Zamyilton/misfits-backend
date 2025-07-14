@@ -10,28 +10,45 @@ const upload = multer();
 
 app.use(cors());
 
-app.post('/send', upload.single('photo'), async (req, res) => {
+app.post('/send', upload.single('media'), async (req, res) => {
   const { caption } = req.body;
-  const photo = req.file;
+  const media = req.file;
 
-  if (!photo || !caption) return res.status(400).json({ error: 'Missing image or message.' });
+  if (!media || !caption) {
+    return res.status(400).json({ error: 'Missing media or message.' });
+  }
 
   const formData = new FormData();
   formData.append('chat_id', process.env.CHAT_ID);
   formData.append('caption', caption);
-  formData.append('photo', photo.buffer, {
-    filename: photo.originalname,
-    contentType: photo.mimetype,
-  });
+
+  let telegramEndpoint = '';
+
+  if (media.mimetype.startsWith('video')) {
+    formData.append('video', media.buffer, {
+      filename: media.originalname,
+      contentType: media.mimetype,
+    });
+    telegramEndpoint = 'sendVideo';
+  } else if (media.mimetype.startsWith('image')) {
+    formData.append('photo', media.buffer, {
+      filename: media.originalname,
+      contentType: media.mimetype,
+    });
+    telegramEndpoint = 'sendPhoto';
+  } else {
+    return res.status(400).json({ error: 'Unsupported media type. Only images and videos allowed.' });
+  }
 
   try {
     const response = await axios.post(
-      `https://api.telegram.org/bot${process.env.BOT_TOKEN}/sendPhoto`,
+      `https://api.telegram.org/bot${process.env.BOT_TOKEN}/${telegramEndpoint}`,
       formData,
       { headers: formData.getHeaders() }
     );
     res.json({ success: true, telegram_response: response.data });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Failed to send to Telegram', detail: err.message });
   }
 });
